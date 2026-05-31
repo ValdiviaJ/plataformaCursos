@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Database Service (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: codemaster-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: codemaster_courses
+      POSTGRES_USER: codemaster_admin
+      POSTGRES_PASSWORD: codemaster_secure_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - codemaster-network
+
+  # Frontend Service (React + Vite in Dev Mode)
+  frontend:
+    image: node:20-alpine
+    container_name: codemaster-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://127.0.0.1:8000/api/v1
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    depends_on:
+      - db
+    networks:
+      - codemaster-network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  codemaster-network:
+    driver: bridge
