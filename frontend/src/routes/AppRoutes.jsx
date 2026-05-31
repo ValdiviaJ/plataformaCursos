@@ -23,6 +23,17 @@ import MisPagos from '../modules/pagos/pages/MisPagos';
 import Reportes from '../modules/reportes/pages/Reportes';
 import Configuracion from '../modules/configuracion/pages/Configuracion';
 
+// Reformed Admin & Academico pages
+import UsuariosPage from '../modules/dashboard/pages/UsuariosPage';
+import CursosAcademicoPage from '../modules/dashboard/pages/CursosAcademicoPage';
+import ClasesPage from '../modules/dashboard/pages/ClasesPage';
+import MaterialesPage from '../modules/dashboard/pages/MaterialesPage';
+import EvaluacionesPage from '../modules/dashboard/pages/EvaluacionesPage';
+import ComunicacionPage from '../modules/dashboard/pages/ComunicacionPage';
+import CertificadosPage from '../modules/dashboard/pages/CertificadosPage';
+import GamificacionPage from '../modules/dashboard/pages/GamificacionPage';
+import IAPage from '../modules/dashboard/pages/IAPage';
+
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
@@ -68,6 +79,17 @@ const AppRoutes = () => {
         <Route path="/pagos" element={<MisPagos />} />
         <Route path="/reportes" element={<Reportes />} />
         <Route path="/configuracion" element={<Configuracion />} />
+        
+        {/* Reformed routes */}
+        <Route path="/dashboard/usuarios/:tipo" element={<UsuariosPage />} />
+        <Route path="/dashboard/cursos-academica/:sub" element={<CursosAcademicoPage />} />
+        <Route path="/dashboard/clases/:tipo" element={<ClasesPage />} />
+        <Route path="/dashboard/materiales" element={<MaterialesPage />} />
+        <Route path="/dashboard/evaluaciones/:tipo" element={<EvaluacionesPage />} />
+        <Route path="/dashboard/comunicacion/:tipo" element={<ComunicacionPage />} />
+        <Route path="/dashboard/certificados" element={<CertificadosPage />} />
+        <Route path="/dashboard/gamificacion" element={<GamificacionPage />} />
+        <Route path="/dashboard/ia" element={<IAPage />} />
       </Route>
 
       {/* Catch-all redirect */}

@@ -13,12 +13,22 @@ import {
   Search, 
   Menu, 
   X,
-  GraduationCap
+  GraduationCap,
+  Video,
+  FolderArchive,
+  ClipboardCheck,
+  MessageSquare,
+  Award,
+  Trophy,
+  BrainCircuit,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openSubmenus, setOpenSubmenus] = useState({});
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -26,12 +36,66 @@ const DashboardLayout = () => {
     navigate('/');
   };
 
+  const toggleSubmenu = (label) => {
+    setOpenSubmenus(prev => ({
+      ...prev,
+      [label]: !prev[label]
+    }));
+  };
+
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/mi-aprendizaje', label: 'Mi Aprendizaje', icon: BookOpen },
-    { to: '/instructores', label: 'Instructores', icon: Users },
-    { to: '/pagos', label: 'Mis Pagos', icon: CreditCard },
-    { to: '/reportes', label: 'Estadísticas', icon: BarChart3 },
+    { 
+      label: 'Usuarios', 
+      icon: Users,
+      submenu: [
+        { to: '/dashboard/usuarios/administradores', label: 'Administradores' },
+        { to: '/dashboard/usuarios/docentes', label: 'Docentes' },
+        { to: '/dashboard/usuarios/estudiantes', label: 'Estudiantes' },
+      ]
+    },
+    { 
+      label: 'Cursos', 
+      icon: BookOpen,
+      submenu: [
+        { to: '/dashboard/cursos-academica/categorias', label: 'Categorías' },
+        { to: '/dashboard/cursos-academica/cursos', label: 'Cursos' },
+        { to: '/dashboard/cursos-academica/unidades', label: 'Unidades' },
+      ]
+    },
+    { 
+      label: 'Clases', 
+      icon: Video,
+      submenu: [
+        { to: '/dashboard/clases/videos', label: 'Videos' },
+        { to: '/dashboard/clases/en-vivo', label: 'En Vivo' },
+        { to: '/dashboard/clases/grabaciones', label: 'Grabaciones' },
+      ]
+    },
+    { to: '/dashboard/materiales', label: 'Materiales', icon: FolderArchive },
+    { 
+      label: 'Evaluaciones', 
+      icon: ClipboardCheck,
+      submenu: [
+        { to: '/dashboard/evaluaciones/tareas', label: 'Tareas' },
+        { to: '/dashboard/evaluaciones/cuestionarios', label: 'Cuestionarios' },
+        { to: '/dashboard/evaluaciones/examenes', label: 'Exámenes' },
+      ]
+    },
+    { 
+      label: 'Comunicación', 
+      icon: MessageSquare,
+      submenu: [
+        { to: '/dashboard/comunicacion/foros', label: 'Foros' },
+        { to: '/dashboard/comunicacion/mensajes', label: 'Mensajes' },
+        { to: '/dashboard/comunicacion/anuncios', label: 'Anuncios' },
+      ]
+    },
+    { to: '/dashboard/certificados', label: 'Certificados', icon: Award },
+    { to: '/reportes', label: 'Reportes', icon: BarChart3 },
+    { to: '/dashboard/gamificacion', label: 'Gamificación', icon: Trophy },
+    { to: '/pagos', label: 'Pagos', icon: CreditCard },
+    { to: '/dashboard/ia', label: 'Tutor & Analítica IA', icon: BrainCircuit },
     { to: '/configuracion', label: 'Configuración', icon: Settings },
   ];
 
@@ -56,10 +120,10 @@ const DashboardLayout = () => {
       {/* Sidebar (Desktop & Mobile drawer) */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-dark-900 border-r border-dark-800/80 p-6 flex flex-col justify-between
-        transition-transform duration-300 transform md:translate-x-0 md:static md:h-screen
+        transition-transform duration-300 transform md:translate-x-0 md:static md:h-screen overflow-y-auto shrink-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-6">
           {/* Logo */}
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2">
@@ -77,19 +141,55 @@ const DashboardLayout = () => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex flex-col gap-2">
-            {navItems.map((item) => {
+          <nav className="flex flex-col gap-1.5">
+            {navItems.map((item, idx) => {
               const Icon = item.icon;
+              
+              if (item.submenu) {
+                const isOpen = !!openSubmenus[item.label];
+                return (
+                  <div key={idx} className="flex flex-col gap-1">
+                    <button 
+                      onClick={() => toggleSubmenu(item.label)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-dark-400 font-medium transition-all hover:bg-dark-800/50 hover:text-white text-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-4.5 h-4.5" />
+                        <span>{item.label}</span>
+                      </div>
+                      {isOpen ? <ChevronDown className="w-4 h-4 text-dark-500" /> : <ChevronRight className="w-4 h-4 text-dark-500" />}
+                    </button>
+                    
+                    {isOpen && (
+                      <div className="pl-9 flex flex-col gap-1 border-l border-dark-800 ml-6 animate-in">
+                        {item.submenu.map((sub, sIdx) => (
+                          <NavLink
+                            key={sIdx}
+                            to={sub.to}
+                            onClick={() => setSidebarOpen(false)}
+                            className={({ isActive }) => 
+                              `block py-1.5 px-3 text-xs font-semibold rounded-lg text-dark-450 hover:text-white transition-all ${isActive ? 'text-primary-400 font-bold bg-primary-500/5' : ''}`
+                            }
+                          >
+                            {sub.label}
+                          </NavLink>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <NavLink
-                  key={item.to}
+                  key={idx}
                   to={item.to}
                   onClick={() => setSidebarOpen(false)}
                   className={({ isActive }) => 
-                    `sidebar-link ${isActive ? 'active bg-primary-500/10 text-primary-400' : ''}`
+                    `flex items-center gap-3 px-4 py-2.5 rounded-xl text-dark-400 font-medium transition-all hover:bg-dark-800/50 hover:text-white text-sm ${isActive ? 'active bg-primary-500/10 text-primary-400' : ''}`
                   }
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4.5 h-4.5" />
                   <span>{item.label}</span>
                 </NavLink>
               );
@@ -98,7 +198,7 @@ const DashboardLayout = () => {
         </div>
 
         {/* User Info & Logout */}
-        <div className="flex flex-col gap-4 border-t border-dark-850 pt-4">
+        <div className="flex flex-col gap-4 border-t border-dark-850 pt-4 mt-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary-600 to-accent-500 flex items-center justify-center font-bold text-white shadow-glow">
               {user?.nombre ? user.nombre.charAt(0) : 'U'}
