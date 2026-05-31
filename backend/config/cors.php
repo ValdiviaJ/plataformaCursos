@@ -4,7 +4,8 @@ $allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:5173',
-    'https://fitflow-frontend-gxdv.onrender.com' // Frontend en producción (Render)
+    'https://fitflow-frontend-gxdv.onrender.com', // Frontend en producción (Render)
+    'https://codemaster-frontend-6i8n.onrender.com' // CodeMaster frontend en producción
 ];
 
 if ($envOrigins = env('ALLOWED_ORIGINS')) {
