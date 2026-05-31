@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from '../services/api';
 
 const AuthContext = createContext();
 
@@ -8,58 +9,91 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar si hay una sesión guardada en localStorage
-    const savedUser = localStorage.getItem('codemaster_user');
-    const token = localStorage.getItem('codemaster_token');
-    
-    if (savedUser && token) {
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
-    }
-    setLoading(false);
+    const checkAuth = async () => {
+      const savedUser = localStorage.getItem('codemaster_user');
+      const token = localStorage.getItem('codemaster_token');
+      
+      if (savedUser && token) {
+        try {
+          // Intentar validar sesión actual con el servidor
+          const res = await api.get('/auth/me');
+          setUser(res.data);
+          setIsAuthenticated(true);
+        } catch (err) {
+          console.error('Sesión inválida o expirada:', err);
+          logout();
+        }
+      }
+      setLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
-  const login = (email, password) => {
-    // Mock login para desarrollo
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (email && password) {
-          const mockUser = {
-            id: 1,
-            nombre: 'Justo Valdivia',
-            email: email,
-            avatar: null,
-            rol: 'estudiante'
-          };
-          localStorage.setItem('codemaster_user', JSON.stringify(mockUser));
-          localStorage.setItem('codemaster_token', 'mock_token_12345');
-          setUser(mockUser);
-          setIsAuthenticated(true);
-          resolve(mockUser);
-        } else {
-          reject(new Error('Credenciales inválidas'));
-        }
-      }, 800);
-    });
+  const login = async (email, password) => {
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      const { user: apiUser, token } = res.data;
+      
+      localStorage.setItem('codemaster_user', JSON.stringify(apiUser));
+      localStorage.setItem('codemaster_token', token);
+      
+      setUser(apiUser);
+      setIsAuthenticated(true);
+      return apiUser;
+    } catch (err) {
+      throw new Error(err.message || 'Credenciales inválidas');
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem('codemaster_user');
-    localStorage.removeItem('codemaster_token');
-    setUser(null);
-    setIsAuthenticated(false);
+  const register = async (nombre, email, password) => {
+    try {
+      const res = await api.post('/auth/register', { 
+        name: nombre, 
+        email, 
+        password 
+      });
+      const { user: apiUser, token } = res.data;
+      
+      localStorage.setItem('codemaster_user', JSON.stringify(apiUser));
+      localStorage.setItem('codemaster_token', token);
+      
+      setUser(apiUser);
+      setIsAuthenticated(true);
+      return apiUser;
+    } catch (err) {
+      throw new Error(err.message || 'Error al crear la cuenta');
+    }
   };
 
-  const updateProfile = (data) => {
-    setUser(prev => {
-      const updated = { ...prev, ...data };
-      localStorage.setItem('codemaster_user', JSON.stringify(updated));
-      return updated;
-    });
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (err) {
+      console.warn('Error al revocar token en servidor:', err);
+    } finally {
+      localStorage.removeItem('codemaster_user');
+      localStorage.removeItem('codemaster_token');
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  };
+
+  const updateProfile = async (data) => {
+    try {
+      const res = await api.put('/auth/profile', { name: data.nombre });
+      const updatedUser = res.data;
+      
+      localStorage.setItem('codemaster_user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      return updatedUser;
+    } catch (err) {
+      throw new Error(err.message || 'Error al actualizar el perfil');
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

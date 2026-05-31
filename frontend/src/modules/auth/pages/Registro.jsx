@@ -4,7 +4,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { Mail, Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const Registro = () => {
-  const { login } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
@@ -22,8 +22,7 @@ const Registro = () => {
     setError('');
     setLoading(true);
     try {
-      // Mock registro que hace login directo para simular fluidez
-      await login(email, password);
+      await register(nombre, email, password);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Error al crear la cuenta. Inténtalo de nuevo.');
