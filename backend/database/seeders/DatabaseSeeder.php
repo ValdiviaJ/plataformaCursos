@@ -26,6 +26,16 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        // 2. Create Default Admin User
+        if (!User::where('email', 'admin@codemaster.com')->exists()) {
+            User::create([
+                'name' => 'Administrador CodeMaster',
+                'email' => 'admin@codemaster.com',
+                'password' => Hash::make('admin123'),
+                'role' => 'admin',
+            ]);
+        }
+
         // 2. Create Categories
         $categoriesData = [
             ['nombre' => 'Desarrollo Web', 'icon' => '💻'],
