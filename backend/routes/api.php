@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CourseController;
+use App\Http\Controllers\API\ChatbotController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,4 +33,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::post('/courses/{id}/enroll', [CourseController::class, 'enroll']);
     Route::get('/my-learning', [CourseController::class, 'myLearning']);
     Route::post('/lessons/{lessonId}/complete', [CourseController::class, 'completeLesson']);
+
+    // Chatbot Tutor Virtual
+    Route::post('/chatbot', [ChatbotController::class, 'chat']);
 });

@@ -9,6 +9,7 @@ import {
   Sparkles,
   HelpCircle
 } from 'lucide-react';
+import { sendChatMessage } from '../../../services/chatbotService';
 
 const recommendedCourses = [
   { id: 1, title: 'Cloud Computing & AWS Architect', match: '96% afinidad', reason: 'Por tu interés en microservicios y backend.' },
@@ -24,39 +25,45 @@ const IAPage = () => {
   const [inputVal, setInputVal] = useState('');
   const [typing, setTyping] = useState(false);
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputVal.trim()) return;
 
+    const messageText = inputVal;
     const userMsg = {
       sender: 'user',
-      text: inputVal,
+      text: messageText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
+
+    // Store history before updating messages state
+    const currentHistory = [...messages];
 
     setMessages(prev => [...prev, userMsg]);
     setInputVal('');
     setTyping(true);
 
-    // Simulate AI response trigger
-    setTimeout(() => {
-      let aiText = 'Interesante pregunta. En React, es fundamental entender el ciclo de vida de los componentes para evitar renders innecesarios. ¿Te gustaría ver un ejemplo práctico de optimización con useMemo o useCallback?';
+    try {
+      const reply = await sendChatMessage(messageText, currentHistory);
       
-      if (inputVal.toLowerCase().includes('token') || inputVal.toLowerCase().includes('laravel')) {
-        aiText = 'Para autenticar una API con Laravel Sanctum, debes emitir tokens usando:\n\n`$token = $user->createToken("auth_token")->plainTextToken;` \n\nEsto genera una cadena segura que el cliente enviará en las cabeceras HTTP como Bearer Token.';
-      } else if (inputVal.toLowerCase().includes('docker') || inputVal.toLowerCase().includes('caddy')) {
-        aiText = 'FrankenPHP utiliza un servidor web integrado Caddy. Tu archivo `Caddyfile` en la raíz se encarga de redireccionar todas las peticiones entrantes a `public/index.php`. Asegúrate de mapear el puerto 80 del contenedor al puerto local deseado en tu `docker-compose.yml`.';
-      }
-
       const aiMsg = {
         sender: 'ai',
-        text: aiText,
+        text: reply,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
       setMessages(prev => [...prev, aiMsg]);
+    } catch (error) {
+      console.error('Error fetching chat response:', error);
+      const errorMsg = {
+        sender: 'ai',
+        text: 'Lo siento, en este momento no puedo responder a tu mensaje. Por favor intenta de nuevo más tarde.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
       setTyping(false);
-    }, 1500);
+    }
   };
 
   return (
