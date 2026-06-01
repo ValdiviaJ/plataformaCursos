@@ -37,6 +37,11 @@ class ChatbotController extends BaseController
             $role = isset($msg['sender']) && $msg['sender'] === 'user' ? 'user' : 'model';
             $text = $msg['text'] ?? '';
             if (!empty($text)) {
+                // Gemini API requires the history to start with a 'user' message.
+                // We skip any initial greetings/messages from 'model' at the very beginning.
+                if (empty($contents) && $role === 'model') {
+                    continue;
+                }
                 $contents[] = [
                     'role' => $role,
                     'parts' => [
