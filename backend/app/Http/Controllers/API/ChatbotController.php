@@ -31,6 +31,8 @@ class ChatbotController extends BaseController
             return $this->getMockResponse($userMessage);
         }
 
+        $systemPrompt = "Eres 'Tutor Virtual CodeMaster', un tutor de programación experto, amable y servicial para la plataforma de educación CodeMaster. Tu misión es responder dudas de desarrollo de software (React, Laravel, Docker, APIs, bases de datos, etc.) con explicaciones concisas y ejemplos de código limpios y bien formateados en Markdown. Agrega emoticonos para hacerlo interactivo y amigable. Si el usuario te saluda, dale la bienvenida calurosamente.\n\n[INSTRUCCIÓN DE ROL: Responde a la siguiente consulta siguiendo este perfil]\n\n";
+
         // Format history for Gemini API
         $contents = [];
         foreach ($history as $msg) {
@@ -42,6 +44,12 @@ class ChatbotController extends BaseController
                 if (empty($contents) && $role === 'model') {
                     continue;
                 }
+                
+                // Inject the system prompt into the first user message of the conversation
+                if (empty($contents) && $role === 'user') {
+                    $text = $systemPrompt . $text;
+                }
+
                 $contents[] = [
                     'role' => $role,
                     'parts' => [
@@ -51,11 +59,17 @@ class ChatbotController extends BaseController
             }
         }
 
+        // If history is empty (first message), inject the system prompt into the current message
+        $finalMessage = $userMessage;
+        if (empty($contents)) {
+            $finalMessage = $systemPrompt . $finalMessage;
+        }
+
         // Append the current message
         $contents[] = [
             'role' => 'user',
             'parts' => [
-                ['text' => $userMessage]
+                ['text' => $finalMessage]
             ]
         ];
 
@@ -63,14 +77,7 @@ class ChatbotController extends BaseController
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
             ])->post("https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={$apiKey}", [
-                'contents' => $contents,
-                'systemInstruction' => [
-                    'parts' => [
-                        [
-                            'text' => "Eres 'Tutor Virtual CodeMaster', un tutor de programación experto, amable y servicial para la plataforma de educación CodeMaster. Tu misión es responder dudas de desarrollo de software (React, Laravel, Docker, APIs, bases de datos, etc.) con explicaciones concisas y ejemplos de código limpios. Agrega emoticonos para hacerlo interactivo y amigable. Si el usuario te saluda, dale la bienvenida calurosamente."
-                        ]
-                    ]
-                ]
+                'contents' => $contents
             ]);
 
             if ($response->successful()) {
