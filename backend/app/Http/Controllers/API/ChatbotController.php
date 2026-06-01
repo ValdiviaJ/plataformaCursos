@@ -24,7 +24,7 @@ class ChatbotController extends BaseController
         $userMessage = $request->input('message');
         $history = $request->input('history', []);
 
-        $apiKey = env('GEMINI_API_KEY');
+        $apiKey = config('services.gemini.key');
 
         if (empty($apiKey)) {
             // Smart local mockup fallback if API key is not configured
