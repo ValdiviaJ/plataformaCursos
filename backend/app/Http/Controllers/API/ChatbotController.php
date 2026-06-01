@@ -80,7 +80,9 @@ class ChatbotController extends BaseController
             }
 
             Log::error('Gemini API Error: ' . $response->body());
-            return $this->sendError('Error de comunicación con la API de IA.', ['details' => $response->json()]);
+            $errorData = $response->json();
+            $googleErrorMessage = $errorData['error']['message'] ?? 'Error de comunicación con la API de IA.';
+            return $this->sendError($googleErrorMessage, ['details' => $errorData]);
 
         } catch (\Exception $e) {
             Log::error('Exception in ChatbotController: ' . $e->getMessage());
