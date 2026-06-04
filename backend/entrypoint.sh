@@ -4,7 +4,7 @@ set -e
 echo "Esperando a que la base de datos este lista..."
 php -r "
 \$dbReady = false;
-for (\$i = 0; \$i < 30; \$i++) {
+for (\$i = 0; \$i < 5; \$i++) {
     try {
         \$host = getenv('DB_HOST');
         \$port = getenv('DB_PORT') ?: '5432';
@@ -19,20 +19,17 @@ for (\$i = 0; \$i < 30; \$i++) {
         break;
     } catch (Exception \$e) {
         file_put_contents('php://stderr', 'Intento ' . (\$i + 1) . ' fallo: ' . \$e->getMessage() . PHP_EOL);
-        sleep(3);
+        sleep(2);
     }
 }
 if (!\$dbReady) {
-    file_put_contents('php://stderr', 'No se pudo conectar a la base de datos. Saliendo...' . PHP_EOL);
-    exit(1);
+    file_put_contents('php://stderr', 'No se pudo conectar a la base de datos. Continuando arranque...' . PHP_EOL);
 }
 "
 
-echo "Ejecutando php artisan migrate:fresh --force..."
-php artisan migrate:fresh --force
-
-echo "Ejecutando php artisan db:seed --force..."
-php artisan db:seed --force
+echo "Ejecutando php artisan migrate --force..."
+php artisan migrate --force
 
 echo "Arrancando FrankenPHP..."
 exec frankenphp run --config /app/Caddyfile
+
