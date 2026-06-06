@@ -76,7 +76,7 @@ const MiAprendizaje = () => {
 
                   {/* Actions */}
                   <div className="flex gap-2">
-                    <Link to={`/leccion/${curso.id}/l3`} className="btn-primary w-full text-center py-2 text-xs font-semibold">
+                    <Link to={`/leccion/${curso.id}/${curso.firstLessonId || '1'}`} className="btn-primary w-full text-center py-2 text-xs font-semibold">
                       Continuar Curso
                     </Link>
                   </div>

@@ -114,7 +114,7 @@ const Overview = () => {
                   </div>
                 </div>
 
-                <Link to={`/leccion/${curso.id}/l3`} className="btn-primary py-2 px-5 text-sm shrink-0 w-full sm:w-auto text-center">
+                <Link to={`/leccion/${curso.id}/${curso.firstLessonId || '1'}`} className="btn-primary py-2 px-5 text-sm shrink-0 w-full sm:w-auto text-center">
                   Continuar
                 </Link>
               </div>
