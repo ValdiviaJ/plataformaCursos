@@ -63,7 +63,7 @@ class CourseController extends BaseController
     {
         $user = Auth::user();
         $enrollments = Enrollment::where('user_id', $user->id)
-                                 ->with('course.category')
+                                 ->with(['course.category', 'course.lessons', 'progress'])
                                  ->get();
 
         return $this->sendResponse($enrollments, 'Mis cursos inscritos recuperados correctamente.');
