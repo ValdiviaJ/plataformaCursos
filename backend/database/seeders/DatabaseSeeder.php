@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Models\Category;
 use App\Models\Course;
 use App\Models\Lesson;
+use App\Models\Enrollment;
+use App\Models\Progress;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
@@ -138,6 +140,39 @@ class DatabaseSeeder extends Seeder
                     ]
                 );
             }
+        }
+
+        // 4. Inscribir al alumno de prueba 'Justo' en el curso de React y simular algo de progreso
+        $student = User::where('email', 'justo@codemaster.com')->first();
+        $reactCourse = Course::where('titulo', 'like', '%React Avanzado%')->first();
+
+        if ($student && $reactCourse) {
+            $enrollment = Enrollment::firstOrCreate([
+                'user_id' => $student->id,
+                'course_id' => $reactCourse->id
+            ], [
+                'progreso' => 0,
+                'estado' => 'activo'
+            ]);
+
+            // Completar las dos primeras lecciones para Justo
+            $lessons = $reactCourse->lessons()->orderBy('orden')->take(2)->get();
+            foreach ($lessons as $lesson) {
+                Progress::firstOrCreate([
+                    'enrollment_id' => $enrollment->id,
+                    'lesson_id' => $lesson->id
+                ], [
+                    'completada' => true
+                ]);
+            }
+
+            // Calcular y actualizar porcentaje de progreso
+            $totalLessons = $reactCourse->lessons()->count();
+            $completedLessons = Progress::where('enrollment_id', $enrollment->id)
+                                        ->where('completada', true)
+                                        ->count();
+            $percentage = $totalLessons > 0 ? round(($completedLessons / $totalLessons) * 100) : 0;
+            $enrollment->update(['progreso' => $percentage]);
         }
     }
 }
