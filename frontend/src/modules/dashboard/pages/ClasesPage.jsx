@@ -124,7 +124,7 @@ const ClasesPage = () => {
     return () => clearInterval(interval);
   }, [activeClass, tipo, isAdminOrInstructor]);
 
-  // Handle camera stream setup
+  // Handle camera stream setup (Instructor)
   useEffect(() => {
     const handleCamera = async () => {
       if (camOn && isAdminOrInstructor) {
@@ -145,21 +145,57 @@ const ClasesPage = () => {
     handleCamera();
   }, [camOn]);
 
-  // Update video element sources when streams or sharing state changes
+  // Handle stream assignment to video elements
   useEffect(() => {
-    if (sharingScreen) {
-      if (screenStream && mainVideoRef.current) {
-        mainVideoRef.current.srcObject = screenStream;
-      }
-      if (camOn && cameraStream && pipVideoRef.current) {
-        pipVideoRef.current.srcObject = cameraStream;
+    if (isAdminOrInstructor) {
+      // Instructor view: bind browser capture streams
+      if (sharingScreen) {
+        if (screenStream && mainVideoRef.current) {
+          mainVideoRef.current.srcObject = screenStream;
+        }
+        if (camOn && cameraStream && pipVideoRef.current) {
+          pipVideoRef.current.srcObject = cameraStream;
+        }
+      } else {
+        if (camOn && cameraStream && mainVideoRef.current) {
+          mainVideoRef.current.srcObject = cameraStream;
+        }
       }
     } else {
-      if (camOn && cameraStream && mainVideoRef.current) {
-        mainVideoRef.current.srcObject = cameraStream;
+      // Student view: bind simulated streams (mp4 files) so they have audio/video tracks for playback & recording
+      if (activeClass) {
+        if (mainVideoRef.current) {
+          let videoSrc = '';
+          if (sharingScreen) {
+            videoSrc = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4';
+          } else if (camOn) {
+            videoSrc = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+          }
+          
+          if (mainVideoRef.current.src !== videoSrc) {
+            mainVideoRef.current.srcObject = null;
+            mainVideoRef.current.src = videoSrc;
+            if (videoSrc) {
+              mainVideoRef.current.loop = true;
+              mainVideoRef.current.play().catch(e => console.log("Student play blocked", e));
+            }
+          }
+        }
+
+        if (pipVideoRef.current) {
+          let pipSrc = (sharingScreen && camOn) ? 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4' : '';
+          if (pipVideoRef.current.src !== pipSrc) {
+            pipVideoRef.current.srcObject = null;
+            pipVideoRef.current.src = pipSrc;
+            if (pipSrc) {
+              pipVideoRef.current.loop = true;
+              pipVideoRef.current.play().catch(e => console.log("Student pip play blocked", e));
+            }
+          }
+        }
       }
     }
-  }, [sharingScreen, screenStream, camOn, cameraStream]);
+  }, [sharingScreen, screenStream, camOn, cameraStream, activeClass, isAdminOrInstructor]);
 
   // Sync state to backend when toggles occur (Instructor only)
   const syncLiveStatus = (newScreenShare, newCamOn) => {
@@ -394,6 +430,7 @@ const ClasesPage = () => {
                             autoPlay 
                             playsInline 
                             muted={isAdminOrInstructor} // Mute instructor self to prevent echo
+                            crossOrigin="anonymous"
                             className="w-full h-full object-contain z-10"
                           />
                           
@@ -405,6 +442,7 @@ const ClasesPage = () => {
                                 autoPlay 
                                 playsInline 
                                 muted={isAdminOrInstructor}
+                                crossOrigin="anonymous"
                                 className="w-full h-full object-cover"
                               />
                             </div>
