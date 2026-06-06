@@ -46,7 +46,6 @@ const DashboardLayout = () => {
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/mi-aprendizaje', label: 'Mi Aprendizaje', icon: GraduationCap, roles: ['estudiante'] },
-    { to: '/dashboard/cursos', label: 'Explorar Cursos', icon: BookOpen, roles: ['estudiante'] },
     { 
       label: 'Usuarios', 
       icon: Users,
