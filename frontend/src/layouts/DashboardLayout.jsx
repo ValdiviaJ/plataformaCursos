@@ -48,6 +48,7 @@ const DashboardLayout = () => {
     { 
       label: 'Usuarios', 
       icon: Users,
+      roles: ['admin'],
       submenu: [
         { to: '/dashboard/usuarios/administradores', label: 'Administradores' },
         { to: '/dashboard/usuarios/docentes', label: 'Docentes' },
@@ -57,6 +58,7 @@ const DashboardLayout = () => {
     { 
       label: 'Cursos', 
       icon: BookOpen,
+      roles: ['admin', 'instructor'],
       submenu: [
         { to: '/dashboard/cursos-academica/categorias', label: 'Categorías' },
         { to: '/dashboard/cursos-academica/cursos', label: 'Cursos' },
@@ -92,12 +94,20 @@ const DashboardLayout = () => {
       ]
     },
     { to: '/dashboard/certificados', label: 'Certificados', icon: Award },
-    { to: '/reportes', label: 'Reportes', icon: BarChart3 },
+    { to: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['admin', 'instructor'] },
     { to: '/dashboard/gamificacion', label: 'Gamificación', icon: Trophy },
     { to: '/pagos', label: 'Pagos', icon: CreditCard },
     { to: '/dashboard/ia', label: 'Tutor & Analítica IA', icon: BrainCircuit },
     { to: '/configuracion', label: 'Configuración', icon: Settings },
   ];
+
+  const userRole = user?.role || user?.rol || 'estudiante';
+  const filteredNavItems = navItems.filter(item => {
+    if (item.roles) {
+      return item.roles.includes(userRole);
+    }
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-dark-950 text-dark-200 flex flex-col md:flex-row">
@@ -142,7 +152,7 @@ const DashboardLayout = () => {
 
           {/* Navigation Links */}
           <nav className="flex flex-col gap-1.5">
-            {navItems.map((item, idx) => {
+            {filteredNavItems.map((item, idx) => {
               const Icon = item.icon;
               
               if (item.submenu) {

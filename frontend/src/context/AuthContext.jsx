@@ -17,7 +17,12 @@ export const AuthProvider = ({ children }) => {
         try {
           // Intentar validar sesión actual con el servidor
           const res = await api.get('/auth/me');
-          setUser(res.data);
+          const mappedUser = {
+            ...res.data,
+            nombre: res.data.name,
+            rol: res.data.role
+          };
+          setUser(mappedUser);
           setIsAuthenticated(true);
         } catch (err) {
           console.error('Sesión inválida o expirada:', err);
@@ -35,12 +40,18 @@ export const AuthProvider = ({ children }) => {
       const res = await api.post('/auth/login', { email, password });
       const { user: apiUser, token } = res.data;
       
-      localStorage.setItem('codemaster_user', JSON.stringify(apiUser));
+      const mappedUser = {
+        ...apiUser,
+        nombre: apiUser.name,
+        rol: apiUser.role
+      };
+      
+      localStorage.setItem('codemaster_user', JSON.stringify(mappedUser));
       localStorage.setItem('codemaster_token', token);
       
-      setUser(apiUser);
+      setUser(mappedUser);
       setIsAuthenticated(true);
-      return apiUser;
+      return mappedUser;
     } catch (err) {
       throw new Error(err.message || 'Credenciales inválidas');
     }
@@ -55,12 +66,18 @@ export const AuthProvider = ({ children }) => {
       });
       const { user: apiUser, token } = res.data;
       
-      localStorage.setItem('codemaster_user', JSON.stringify(apiUser));
+      const mappedUser = {
+        ...apiUser,
+        nombre: apiUser.name,
+        rol: apiUser.role
+      };
+      
+      localStorage.setItem('codemaster_user', JSON.stringify(mappedUser));
       localStorage.setItem('codemaster_token', token);
       
-      setUser(apiUser);
+      setUser(mappedUser);
       setIsAuthenticated(true);
-      return apiUser;
+      return mappedUser;
     } catch (err) {
       throw new Error(err.message || 'Error al crear la cuenta');
     }
@@ -82,7 +99,11 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (data) => {
     try {
       const res = await api.put('/auth/profile', { name: data.nombre });
-      const updatedUser = res.data;
+      const updatedUser = {
+        ...res.data,
+        nombre: res.data.name,
+        rol: res.data.role
+      };
       
       localStorage.setItem('codemaster_user', JSON.stringify(updatedUser));
       setUser(updatedUser);

@@ -44,6 +44,22 @@ const PrivateRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
+const RoleRoute = ({ children, allowedRoles }) => {
+  const { user, isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return <div className="p-8 text-center text-dark-400">Verificando sesión...</div>;
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  const userRole = user?.role || user?.rol || 'estudiante';
+  
+  return allowedRoles.includes(userRole) ? children : <Navigate to="/dashboard" replace />;
+};
+
 const PublicOnlyRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
@@ -77,12 +93,12 @@ const AppRoutes = () => {
         <Route path="/leccion/:cursoId/:leccionId" element={<Leccion />} />
         <Route path="/instructores" element={<Instructores />} />
         <Route path="/pagos" element={<MisPagos />} />
-        <Route path="/reportes" element={<Reportes />} />
+        <Route path="/reportes" element={<RoleRoute allowedRoles={['admin', 'instructor']}><Reportes /></RoleRoute>} />
         <Route path="/configuracion" element={<Configuracion />} />
         
         {/* Reformed routes */}
-        <Route path="/dashboard/usuarios/:tipo" element={<UsuariosPage />} />
-        <Route path="/dashboard/cursos-academica/:sub" element={<CursosAcademicoPage />} />
+        <Route path="/dashboard/usuarios/:tipo" element={<RoleRoute allowedRoles={['admin']}><UsuariosPage /></RoleRoute>} />
+        <Route path="/dashboard/cursos-academica/:sub" element={<RoleRoute allowedRoles={['admin', 'instructor']}><CursosAcademicoPage /></RoleRoute>} />
         <Route path="/dashboard/clases/:tipo" element={<ClasesPage />} />
         <Route path="/dashboard/materiales" element={<MaterialesPage />} />
         <Route path="/dashboard/evaluaciones/:tipo" element={<EvaluacionesPage />} />
