@@ -19,7 +19,7 @@ import {
   Clock,
   ArrowRight,
   Maximize2,
-  TvOff,
+  VideoOff,
   Plus
 } from 'lucide-react';
 
@@ -277,7 +277,7 @@ const ClasesPage = () => {
                         />
                       ) : (
                         <div className="flex flex-col items-center justify-center gap-3 text-dark-500 z-10">
-                          <TvOff className="w-16 h-16 text-dark-600" />
+                          <VideoOff className="w-16 h-16 text-dark-600" />
                           <p className="text-sm font-semibold">Cámara y pantalla compartida apagada</p>
                         </div>
                       )}
@@ -419,7 +419,7 @@ const ClasesPage = () => {
                   ) : (
                     /* STUDENT VIEW: OFFLINE MESSAGE */
                     <div className="glass-card p-12 text-center flex flex-col items-center gap-4">
-                      <TvOff className="w-12 h-12 text-dark-600 animate-pulse" />
+                      <VideoOff className="w-12 h-12 text-dark-600 animate-pulse" />
                       <h3 className="text-lg font-bold text-white">No hay clases en vivo en este momento</h3>
                       <p className="text-dark-500 max-w-sm">El instructor no ha iniciado ninguna videoconferencia activa. Vuelve más tarde o explora las clases grabadas.</p>
                       <button 
