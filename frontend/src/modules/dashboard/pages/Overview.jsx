@@ -32,7 +32,7 @@ const Overview = () => {
             Tienes un gran progreso esta semana. ¡Sigue así y obtendrás tu siguiente certificado!
           </p>
         </div>
-        <Link to="/cursos" className="btn-primary flex items-center gap-2 py-2.5 text-sm shrink-0">
+        <Link to="/dashboard/cursos" className="btn-primary flex items-center gap-2 py-2.5 text-sm shrink-0">
           Explorar Cursos <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

@@ -96,7 +96,6 @@ const AppRoutes = () => {
         <Route path="/reportes" element={<RoleRoute allowedRoles={['admin', 'instructor']}><Reportes /></RoleRoute>} />
         <Route path="/configuracion" element={<Configuracion />} />
         
-        {/* Reformed routes */}
         <Route path="/dashboard/usuarios/:tipo" element={<RoleRoute allowedRoles={['admin']}><UsuariosPage /></RoleRoute>} />
         <Route path="/dashboard/cursos-academica/:sub" element={<RoleRoute allowedRoles={['admin', 'instructor']}><CursosAcademicoPage /></RoleRoute>} />
         <Route path="/dashboard/clases/:tipo" element={<ClasesPage />} />
@@ -106,6 +105,10 @@ const AppRoutes = () => {
         <Route path="/dashboard/certificados" element={<CertificadosPage />} />
         <Route path="/dashboard/gamificacion" element={<GamificacionPage />} />
         <Route path="/dashboard/ia" element={<IAPage />} />
+        
+        {/* Explorar catálogo y detalle dentro del dashboard */}
+        <Route path="/dashboard/cursos" element={<CatalogoCursos />} />
+        <Route path="/dashboard/curso/:id" element={<DetalleCurso />} />
       </Route>
 
       {/* Catch-all redirect */}

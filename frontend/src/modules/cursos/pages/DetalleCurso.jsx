@@ -21,16 +21,20 @@ const DetalleCurso = () => {
   const [curso, setCurso] = useState(null);
   const [activeTab, setActiveTab] = useState('temario');
   const [expandedModule, setExpandedModule] = useState('m1');
+  const [enrolling, setEnrolling] = useState(false);
+
+  const isDashboard = window.location.pathname.startsWith('/dashboard');
+  const catalogPath = isDashboard ? '/dashboard/cursos' : '/cursos';
 
   useEffect(() => {
     cursoService.getCursoById(id).then(data => {
       if (data) {
         setCurso(data);
       } else {
-        navigate('/cursos');
+        navigate(catalogPath);
       }
     });
-  }, [id, navigate]);
+  }, [id, navigate, catalogPath]);
 
   if (!curso) {
     return <div className="p-8 text-center text-dark-400">Cargando curso...</div>;
@@ -38,7 +42,19 @@ const DetalleCurso = () => {
 
   const handleEnroll = () => {
     if (isAuthenticated) {
-      navigate('/mi-aprendizaje');
+      setEnrolling(true);
+      cursoService.enroll(curso.id)
+        .then(() => {
+          navigate('/mi-aprendizaje');
+        })
+        .catch(err => {
+          console.error(err);
+          // Si ya está inscrito, igual lo redirigimos
+          navigate('/mi-aprendizaje');
+        })
+        .finally(() => {
+          setEnrolling(false);
+        });
     } else {
       navigate('/login');
     }
@@ -46,7 +62,7 @@ const DetalleCurso = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8 animate-in">
-      <Link to="/cursos" className="flex items-center gap-2 text-dark-400 hover:text-white transition-colors text-sm font-semibold self-start">
+      <Link to={catalogPath} className="flex items-center gap-2 text-dark-400 hover:text-white transition-colors text-sm font-semibold self-start">
         <ArrowLeft className="w-4 h-4" /> Volver al catálogo
       </Link>
 
@@ -199,9 +215,13 @@ const DetalleCurso = () => {
               <p className="text-xs text-emerald-400 font-semibold">¡Ahorra {curso.descuento}% con esta inscripción hoy!</p>
             </div>
 
-            <button onClick={handleEnroll} className="btn-primary w-full text-center py-3">
-              Inscribirse Ahora
-            </button>
+            <button 
+               onClick={handleEnroll} 
+               disabled={enrolling}
+               className="btn-primary w-full text-center py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+             >
+               {enrolling ? 'Inscribiendo...' : 'Inscribirse Ahora'}
+             </button>
 
             <div className="flex flex-col gap-3 text-sm text-dark-300 border-t border-dark-850 pt-4">
               <h4 className="font-bold text-white text-xs uppercase tracking-wider">Este curso incluye:</h4>

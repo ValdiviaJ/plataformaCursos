@@ -11,6 +11,8 @@ const CatalogoCursos = () => {
   const [levelFilter, setLevelFilter] = useState('Todos');
   const [categories, setCategories] = useState([]);
 
+  const isDashboard = window.location.pathname.startsWith('/dashboard');
+
   useEffect(() => {
     cursoService.getCursos().then(data => {
       setCourses(data);
@@ -114,7 +116,7 @@ const CatalogoCursos = () => {
               <div className="p-6 flex flex-col gap-4 flex-grow justify-between">
                 <div className="flex flex-col gap-2">
                   <h3 className="font-display font-bold text-lg text-white leading-snug hover:text-primary-400 transition-colors line-clamp-2">
-                    <Link to={`/curso/${curso.id}`}>{curso.titulo}</Link>
+                    <Link to={isDashboard ? `/dashboard/curso/${curso.id}` : `/curso/${curso.id}`}>{curso.titulo}</Link>
                   </h3>
                   <p className="text-sm text-dark-400 line-clamp-2">{curso.descripcion}</p>
                 </div>
@@ -142,7 +144,7 @@ const CatalogoCursos = () => {
                         </span>
                       )}
                     </div>
-                    <Link to={`/curso/${curso.id}`} className="btn-primary py-2 px-4 text-xs">
+                    <Link to={isDashboard ? `/dashboard/curso/${curso.id}` : `/curso/${curso.id}`} className="btn-primary py-2 px-4 text-xs">
                       Detalles
                     </Link>
                   </div>
