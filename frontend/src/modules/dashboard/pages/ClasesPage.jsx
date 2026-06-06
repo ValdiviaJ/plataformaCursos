@@ -20,7 +20,8 @@ import {
   ArrowRight,
   Maximize2,
   VideoOff,
-  Plus
+  Plus,
+  CircleDot
 } from 'lucide-react';
 
 const ClasesPage = () => {
@@ -43,11 +44,19 @@ const ClasesPage = () => {
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(false);
   const [sharingScreen, setSharingScreen] = useState(false);
-  const [recording, setRecording] = useState(false);
 
-  // Media streams refs
-  const videoRef = useRef(null);
-  const mediaStreamRef = useRef(null);
+  // Browser Streams
+  const [cameraStream, setCameraStream] = useState(null);
+  const [screenStream, setScreenStream] = useState(null);
+
+  // Video Refs
+  const mainVideoRef = useRef(null);
+  const pipVideoRef = useRef(null);
+
+  // Local Recording (For both Student and Instructor)
+  const [localRecording, setLocalRecording] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
 
   // Live Chat state
   const [chatMessages, setChatMessages] = useState([]);
@@ -59,9 +68,12 @@ const ClasesPage = () => {
   // Fetch initial info
   useEffect(() => {
     setLoading(true);
-    // Fetch active live class
     claseService.getActiveClass().then(res => {
       setActiveClass(res);
+      if (res) {
+        setSharingScreen(res.is_sharing_screen);
+        setCamOn(res.is_cam_on);
+      }
       setLoading(false);
     });
 
@@ -79,77 +91,184 @@ const ClasesPage = () => {
     }
   }, [tipo, isAdminOrInstructor]);
 
-  // Poll chat messages if class is active
+  // Poll class status and chat messages
   useEffect(() => {
     if (!activeClass || tipo !== 'en-vivo') return;
 
     // Load initial messages
     claseService.getChat(activeClass.id).then(msgs => setChatMessages(msgs));
 
-    // Poll every 3 seconds
     const interval = setInterval(() => {
+      // Sync chat
       claseService.getChat(activeClass.id).then(msgs => setChatMessages(msgs));
+      
+      // Sync active class status (sharing screen, cam, active check)
+      claseService.getActiveClass().then(res => {
+        if (!res) {
+          // Class ended
+          stopAllStreams();
+          setActiveClass(null);
+          alert('La clase en vivo ha finalizado.');
+          navigate('/dashboard/clases/grabaciones');
+        } else {
+          setActiveClass(res);
+          // If student, sync camera and screen share status from database
+          if (!isAdminOrInstructor) {
+            setSharingScreen(res.is_sharing_screen);
+            setCamOn(res.is_cam_on);
+          }
+        }
+      });
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [activeClass, tipo]);
+  }, [activeClass, tipo, isAdminOrInstructor]);
 
-  // Handle webcam stream based on camOn toggling
+  // Handle camera stream setup
   useEffect(() => {
-    const startCam = async () => {
-      if (camOn) {
+    const handleCamera = async () => {
+      if (camOn && isAdminOrInstructor) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: micOn });
-          mediaStreamRef.current = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
+          setCameraStream(stream);
         } catch (err) {
-          console.error('Error accessing webcam:', err);
+          console.error('Error sharing camera:', err);
           setCamOn(false);
         }
       } else {
-        stopMediaTracks();
+        if (cameraStream) {
+          cameraStream.getTracks().forEach(track => track.stop());
+          setCameraStream(null);
+        }
       }
     };
-
-    startCam();
-
-    return () => {
-      stopMediaTracks();
-    };
+    handleCamera();
   }, [camOn]);
 
-  const stopMediaTracks = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      mediaStreamRef.current = null;
+  // Update video element sources when streams or sharing state changes
+  useEffect(() => {
+    if (sharingScreen) {
+      if (screenStream && mainVideoRef.current) {
+        mainVideoRef.current.srcObject = screenStream;
+      }
+      if (camOn && cameraStream && pipVideoRef.current) {
+        pipVideoRef.current.srcObject = cameraStream;
+      }
+    } else {
+      if (camOn && cameraStream && mainVideoRef.current) {
+        mainVideoRef.current.srcObject = cameraStream;
+      }
+    }
+  }, [sharingScreen, screenStream, camOn, cameraStream]);
+
+  // Sync state to backend when toggles occur (Instructor only)
+  const syncLiveStatus = (newScreenShare, newCamOn) => {
+    if (isAdminOrInstructor && activeClass) {
+      claseService.updateClassStatus(newScreenShare, newCamOn).catch(err => console.error(err));
     }
   };
 
-  // Handle screen sharing stream
+  const handleToggleCam = () => {
+    const nextState = !camOn;
+    setCamOn(nextState);
+    syncLiveStatus(sharingScreen, nextState);
+  };
+
   const handleToggleScreenShare = async () => {
     if (!sharingScreen) {
       try {
         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        mediaStreamRef.current = stream;
-        setCamOn(false); // disable webcam
+        setScreenStream(stream);
         setSharingScreen(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
+        syncLiveStatus(true, camOn);
 
-        // Detect screen sharing ended by browser native button
+        // Detect manual end share from browser
         stream.getVideoTracks()[0].onended = () => {
           setSharingScreen(false);
-          stopMediaTracks();
+          if (stream) stream.getTracks().forEach(t => t.stop());
+          setScreenStream(null);
+          syncLiveStatus(false, camOn);
         };
       } catch (err) {
         console.error('Error sharing screen:', err);
       }
     } else {
+      if (screenStream) {
+        screenStream.getTracks().forEach(t => t.stop());
+        setScreenStream(null);
+      }
       setSharingScreen(false);
-      stopMediaTracks();
+      syncLiveStatus(false, camOn);
+    }
+  };
+
+  const stopAllStreams = () => {
+    if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+    if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+    setCameraStream(null);
+    setScreenStream(null);
+  };
+
+  // Local Recording Implementation (For both Students and Instructors)
+  const handleToggleLocalRecording = () => {
+    if (!localRecording) {
+      // Start local recording
+      let streamToRecord = null;
+
+      // Capture stream from main video element
+      if (mainVideoRef.current) {
+        if (mainVideoRef.current.captureStream) {
+          streamToRecord = mainVideoRef.current.captureStream();
+        } else if (mainVideoRef.current.mozCaptureStream) {
+          streamToRecord = mainVideoRef.current.mozCaptureStream();
+        }
+      }
+
+      if (!streamToRecord) {
+        alert('No se pudo iniciar la grabación: No hay señal de video activa en pantalla.');
+        return;
+      }
+
+      recordedChunksRef.current = [];
+      const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+      
+      try {
+        const recorder = new MediaRecorder(streamToRecord, options);
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            recordedChunksRef.current.push(event.data);
+          }
+        };
+
+        recorder.onstop = () => {
+          const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = `clase-grabada-${activeClass?.titulo || 'codemaster'}.webm`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+        };
+
+        recorder.start(1000); // collect 1s of data chunks
+        setLocalRecording(true);
+      } catch (err) {
+        console.error('Recorder error:', err);
+        alert('Error al iniciar el grabador local.');
+      }
+    } else {
+      // Stop local recording
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      setLocalRecording(false);
     }
   };
 
@@ -166,7 +285,7 @@ const ClasesPage = () => {
       .catch(err => console.error(err));
   };
 
-  // Start live class
+  // Start live class (Instructor)
   const handleStartLive = (e) => {
     e.preventDefault();
     if (!selectedCourseId || !liveTitle.trim()) return;
@@ -175,7 +294,8 @@ const ClasesPage = () => {
     claseService.startClass(selectedCourseId, liveTitle)
       .then(res => {
         setActiveClass(res);
-        setCamOn(true); // turn camera on by default
+        setCamOn(true); // turn camera on
+        syncLiveStatus(false, true);
         setLoading(false);
       })
       .catch(err => {
@@ -184,17 +304,17 @@ const ClasesPage = () => {
       });
   };
 
-  // End live class
+  // End live class (Instructor)
   const handleEndLive = () => {
     if (!window.confirm('¿Está seguro de finalizar la clase en vivo? Se guardará una grabación automáticamente.')) return;
 
     setLoading(true);
     claseService.endClass()
       .then(() => {
-        stopMediaTracks();
+        stopAllStreams();
         setCamOn(false);
         setSharingScreen(false);
-        setRecording(false);
+        setLocalRecording(false);
         setActiveClass(null);
         navigate('/dashboard/clases/grabaciones');
       })
@@ -256,65 +376,97 @@ const ClasesPage = () => {
           {tipo === 'en-vivo' && (
             <>
               {activeClass ? (
-                /* LIVE CLASS PRESENT */
+                /* LIVE CLASS ACTIVE */
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-2 flex flex-col gap-4">
                     {/* Stream Video Container */}
                     <div className="aspect-video rounded-2xl bg-black border border-primary-500/20 relative overflow-hidden flex flex-col items-center justify-center shadow-lg">
-                      <div className="absolute top-4 left-4 bg-red-600 text-white font-bold text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-pulse shadow-glow z-20">
+                      <div className="absolute top-4 left-4 bg-red-650 text-white font-bold text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-pulse shadow-glow z-20">
                         <span className="w-2 h-2 rounded-full bg-white" />
                         TRANSMITIENDO EN VIVO
                       </div>
 
-                      {/* Video Element for Webcam or Screen Capture */}
+                      {/* Main Display Element (Webcam or Shared Screen) */}
                       {(camOn || sharingScreen) ? (
-                        <video 
-                          ref={videoRef}
-                          autoPlay 
-                          playsInline 
-                          muted={isAdminOrInstructor} // Mute self, student should hear audio
-                          className="w-full h-full object-cover z-10"
-                        />
+                        <>
+                          <video 
+                            ref={mainVideoRef}
+                            autoPlay 
+                            playsInline 
+                            muted={isAdminOrInstructor} // Mute instructor self to prevent echo
+                            className="w-full h-full object-contain z-10"
+                          />
+                          
+                          {/* FLOATING PICTURE-IN-PICTURE WEBCAM OVERLAY (when sharing screen) */}
+                          {sharingScreen && camOn && (
+                            <div className="absolute bottom-16 right-4 w-40 md:w-52 aspect-video rounded-xl bg-dark-900 border-2 border-primary-500 shadow-xl overflow-hidden z-20">
+                              <video 
+                                ref={pipVideoRef}
+                                autoPlay 
+                                playsInline 
+                                muted={isAdminOrInstructor}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="flex flex-col items-center justify-center gap-3 text-dark-500 z-10">
                           <VideoOff className="w-16 h-16 text-dark-600" />
-                          <p className="text-sm font-semibold">Cámara y pantalla compartida apagada</p>
+                          <p className="text-sm font-semibold">Señal de video apagada</p>
                         </div>
                       )}
 
-                      {/* Control Panel (Only for Admin/Instructor who broadcasts) */}
-                      {isAdminOrInstructor && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/85 backdrop-blur-md px-6 py-3 rounded-full flex items-center gap-4 border border-dark-800 z-20">
+                      {/* Control Panel (Both Student and Instructor buttons) */}
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/85 backdrop-blur-md px-6 py-3 rounded-full flex items-center gap-4 border border-dark-800 z-20">
+                        {/* Instructor Controls */}
+                        {isAdminOrInstructor ? (
+                          <>
+                            <button 
+                              onClick={() => setMicOn(!micOn)}
+                              className={`p-2.5 rounded-full transition-all ${micOn ? 'bg-dark-800 text-white hover:bg-dark-750' : 'bg-red-500/20 text-red-400'}`}
+                              title={micOn ? 'Apagar Micrófono' : 'Encender Micrófono'}
+                            >
+                              {micOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                            </button>
+                            <button 
+                              onClick={handleToggleCam}
+                              className={`p-2.5 rounded-full transition-all ${camOn ? 'bg-dark-800 text-white hover:bg-dark-750' : 'bg-red-500/20 text-red-400'}`}
+                              title={camOn ? 'Apagar Cámara' : 'Encender Cámara'}
+                            >
+                              {camOn ? <Camera className="w-5 h-5" /> : <CameraOff className="w-5 h-5" />}
+                            </button>
+                            <button 
+                              onClick={handleToggleScreenShare}
+                              className={`p-2.5 rounded-full transition-all ${sharingScreen ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-dark-800 text-white hover:bg-dark-750'}`}
+                              title={sharingScreen ? 'Detener Compartir Pantalla' : 'Compartir Pantalla'}
+                            >
+                              <ScreenShare className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={handleEndLive}
+                              className="p-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white"
+                              title="Finalizar Clase"
+                            >
+                              <Disc className="w-5 h-5" />
+                            </button>
+                          </>
+                        ) : (
+                          /* Student recording control button */
                           <button 
-                            onClick={() => setMicOn(!micOn)}
-                            className={`p-2.5 rounded-full transition-all ${micOn ? 'bg-dark-800 text-white hover:bg-dark-750' : 'bg-red-500/20 text-red-400'}`}
-                            title={micOn ? 'Apagar Micrófono' : 'Encender Micrófono'}
+                            onClick={handleToggleLocalRecording}
+                            className={`px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 transition-all ${
+                              localRecording 
+                                ? 'bg-red-600 text-white animate-pulse' 
+                                : 'bg-dark-800 text-dark-300 hover:text-white'
+                            }`}
+                            title={localRecording ? 'Detener Grabación Local' : 'Grabar Clase Localmente'}
                           >
-                            {micOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                            <CircleDot className="w-4 h-4 text-red-500" />
+                            <span>{localRecording ? 'Grabando...' : 'Grabar Clase'}</span>
                           </button>
-                          <button 
-                            onClick={() => setCamOn(!camOn)}
-                            className={`p-2.5 rounded-full transition-all ${camOn ? 'bg-dark-800 text-white hover:bg-dark-750' : 'bg-red-500/20 text-red-400'}`}
-                            title={camOn ? 'Apagar Cámara' : 'Encender Cámara'}
-                          >
-                            {camOn ? <Camera className="w-5 h-5" /> : <CameraOff className="w-5 h-5" />}
-                          </button>
-                          <button 
-                            onClick={handleToggleScreenShare}
-                            className={`p-2.5 rounded-full transition-all ${sharingScreen ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-dark-800 text-white hover:bg-dark-750'}`}
-                            title={sharingScreen ? 'Detener Compartir Pantalla' : 'Compartir Pantalla'}
-                          >
-                            <ScreenShare className="w-5 h-5" />
-                          </button>
-                          <button 
-                            onClick={handleEndLive}
-                            className="p-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white"
-                            title="Finalizar Clase"
-                          >
-                            <Disc className="w-5 h-5 animate-pulse" />
-                          </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
 
                     {/* Class Details Card */}
@@ -371,10 +523,9 @@ const ClasesPage = () => {
                   </div>
                 </div>
               ) : (
-                /* NO LIVE CLASS PRESENT */
+                /* NO LIVE CLASS ACTIVE */
                 <div className="max-w-xl mx-auto py-12">
                   {isAdminOrInstructor ? (
-                    /* INSTRUCTOR VIEW: CAN CREATE A LIVE STREAM */
                     <div className="glass-card p-8 flex flex-col gap-6">
                       <div className="flex flex-col gap-1 items-center text-center">
                         <div className="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center text-primary-400 mb-2">
@@ -417,7 +568,6 @@ const ClasesPage = () => {
                       </form>
                     </div>
                   ) : (
-                    /* STUDENT VIEW: OFFLINE MESSAGE */
                     <div className="glass-card p-12 text-center flex flex-col items-center gap-4">
                       <VideoOff className="w-12 h-12 text-dark-600 animate-pulse" />
                       <h3 className="text-lg font-bold text-white">No hay clases en vivo en este momento</h3>

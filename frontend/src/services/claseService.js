@@ -15,6 +15,11 @@ export const claseService = {
       .then(res => res.data);
   },
 
+  updateClassStatus: (isSharingScreen, isCamOn) => {
+    return api.post('/live-class/status', { is_sharing_screen: isSharingScreen, is_cam_on: isCamOn })
+      .then(res => res.data);
+  },
+
   endClass: () => {
     return api.post('/live-class/end')
       .then(res => res.data);

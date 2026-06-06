@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     // Clases en Vivo
     Route::get('/live-class/active', [LiveClassController::class, 'getActive']);
     Route::post('/live-class/start', [LiveClassController::class, 'start']);
+    Route::post('/live-class/status', [LiveClassController::class, 'updateStatus']);
     Route::post('/live-class/end', [LiveClassController::class, 'end']);
     Route::get('/live-class/{id}/chat', [LiveClassController::class, 'getChat']);
     Route::post('/live-class/{id}/chat', [LiveClassController::class, 'postChat']);

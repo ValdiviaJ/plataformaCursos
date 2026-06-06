@@ -14,6 +14,8 @@ class LiveClass extends Model
         'user_id',
         'titulo',
         'is_active',
+        'is_sharing_screen',
+        'is_cam_on',
         'started_at',
         'ended_at'
     ];

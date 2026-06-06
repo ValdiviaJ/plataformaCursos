@@ -41,6 +41,22 @@ class LiveClassController extends BaseController
         return $this->sendResponse($liveClass->load(['course', 'user']), 'Clase en vivo iniciada correctamente.');
     }
 
+    public function updateStatus(Request $request)
+    {
+        $activeClass = LiveClass::where('is_active', true)->first();
+
+        if (!$activeClass) {
+            return $this->sendError('No hay ninguna clase activa actualmente.');
+        }
+
+        $activeClass->update([
+            'is_sharing_screen' => $request->has('is_sharing_screen') ? $request->boolean('is_sharing_screen') : $activeClass->is_sharing_screen,
+            'is_cam_on' => $request->has('is_cam_on') ? $request->boolean('is_cam_on') : $activeClass->is_cam_on,
+        ]);
+
+        return $this->sendResponse($activeClass, 'Estado de transmisión actualizado.');
+    }
+
     public function end(Request $request)
     {
         $activeClass = LiveClass::where('is_active', true)->first();
