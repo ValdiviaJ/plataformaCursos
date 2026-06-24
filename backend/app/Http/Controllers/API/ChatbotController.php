@@ -18,82 +18,37 @@ class ChatbotController extends BaseController
     {
         $request->validate([
             'message' => 'required|string',
-            'history' => 'nullable|array',
         ]);
 
         $userMessage = $request->input('message');
-        $history = $request->input('history', []);
+        $n8nUrl = config('services.n8n.chatbot_url');
 
-        $apiKey = trim(config('services.gemini.key') ?? '');
-
-        if (empty($apiKey)) {
-            // Smart local mockup fallback if API key is not configured
-            return $this->getMockResponse($userMessage);
+        if (empty($n8nUrl)) {
+            return $this->sendError('El servicio de chatbot de n8n no está configurado.');
         }
 
-        $systemPrompt = "Eres 'Tutor Virtual CodeMaster', un tutor de programación experto, amable y servicial para la plataforma de educación CodeMaster. Tu misión es responder dudas de desarrollo de software (React, Laravel, Docker, APIs, bases de datos, etc.) con explicaciones concisas y ejemplos de código limpios y bien formateados en Markdown. Agrega emoticonos para hacerlo interactivo y amigable. Si el usuario te saluda, dale la bienvenida calurosamente.\n\n[INSTRUCCIÓN DE ROL: Responde a la siguiente consulta siguiendo este perfil]\n\n";
-
-        // Format history for Gemini API
-        $contents = [];
-        foreach ($history as $msg) {
-            $role = isset($msg['sender']) && $msg['sender'] === 'user' ? 'user' : 'model';
-            $text = $msg['text'] ?? '';
-            if (!empty($text)) {
-                // Gemini API requires the history to start with a 'user' message.
-                // We skip any initial greetings/messages from 'model' at the very beginning.
-                if (empty($contents) && $role === 'model') {
-                    continue;
-                }
-                
-                // Inject the system prompt into the first user message of the conversation
-                if (empty($contents) && $role === 'user') {
-                    $text = $systemPrompt . $text;
-                }
-
-                $contents[] = [
-                    'role' => $role,
-                    'parts' => [
-                        ['text' => $text]
-                    ]
-                ];
-            }
-        }
-
-        // If history is empty (first message), inject the system prompt into the current message
-        $finalMessage = $userMessage;
-        if (empty($contents)) {
-            $finalMessage = $systemPrompt . $finalMessage;
-        }
-
-        // Append the current message
-        $contents[] = [
-            'role' => 'user',
-            'parts' => [
-                ['text' => $finalMessage]
-            ]
-        ];
+        // Usamos el ID del usuario autenticado como sessionId, si no está autenticado usamos un fallback único o de sesión
+        $sessionId = auth()->check() ? auth()->id() : 'guest_session_' . session()->getId();
 
         try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-            ])->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}", [
-                'contents' => $contents
+            ])->post($n8nUrl, [
+                'chatInput' => $userMessage,
+                'sessionId' => $sessionId,
             ]);
 
             if ($response->successful()) {
-                $data = $response->json();
-                $reply = $data['candidates'][0]['content']['parts'][0]['text'] ?? 'No pude generar una respuesta en este momento.';
-                return $this->sendResponse(['reply' => $reply], 'Respuesta generada correctamente');
+                $reply = $response->json('output') ?? 'No pude generar una respuesta en este momento.';
+                return $this->sendResponse(['reply' => $reply], 'Respuesta generada correctamente por n8n');
             }
 
-            Log::error('Gemini API Error: ' . $response->body());
-            $errorData = $response->json();
-            $googleErrorMessage = $errorData['error']['message'] ?? 'Error de comunicación con la API de IA.';
-            return $this->sendError($googleErrorMessage, ['details' => $errorData]);
+            Log::error('n8n Chatbot Webhook Error: ' . $response->body());
+            return $this->sendError('Error de comunicación con el chatbot de n8n.');
 
         } catch (\Exception $e) {
             Log::error('Exception in ChatbotController: ' . $e->getMessage());
-            return $this->sendError('Ocurrió un error al procesar tu solicitud.');
+            return $this->sendError('Ocurrió un error al procesar tu solicitud con el chatbot.');
         }
     }
 
