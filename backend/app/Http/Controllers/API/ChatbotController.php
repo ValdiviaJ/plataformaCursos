@@ -39,7 +39,8 @@ class ChatbotController extends BaseController
             ]);
 
             if ($response->successful()) {
-                $reply = $response->json('output') ?? 'No pude generar una respuesta en este momento.';
+                Log::info('n8n Response Raw: ' . $response->body());
+                $reply = $response->json('output') ?? $response->json('response') ?? $response->json('text') ?? $response->body() ?? 'No pude generar una respuesta en este momento.';
                 return $this->sendResponse(['reply' => $reply], 'Respuesta generada correctamente por n8n');
             }
 
