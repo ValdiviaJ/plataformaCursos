@@ -95,17 +95,75 @@ const IAPage = () => {
 
           {/* Messages list */}
           <div className="flex-grow p-4 overflow-y-auto flex flex-col gap-4">
-            {messages.map((msg, idx) => (
-              <div 
-                key={idx} 
-                className={`flex flex-col gap-1 max-w-[85%] ${msg.sender === 'user' ? 'self-end items-end' : 'self-start items-start'}`}
-              >
-                <div className={`p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${msg.sender === 'user' ? 'bg-primary-600 text-white rounded-tr-none shadow-glow' : 'bg-dark-900 border border-dark-850 text-dark-200 rounded-tl-none'}`}>
-                  {msg.text}
+            {messages.map((msg, idx) => {
+              // Función simple para parsear negritas (**) y código en línea (`)
+              const renderMessageText = (text) => {
+                if (msg.sender === 'user') return text; // El usuario no suele usar markdown
+
+                // Separar por bloques de código con triple backtick para darles estilo de tarjeta de código
+                const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+                const parts = [];
+                let lastIndex = 0;
+                let match;
+
+                while ((match = codeBlockRegex.exec(text)) !== null) {
+                  const before = text.substring(lastIndex, match.index);
+                  if (before) {
+                    parts.push({ type: 'text', content: before });
+                  }
+                  parts.push({ type: 'code', language: match[1], content: match[2] });
+                  lastIndex = codeBlockRegex.lastIndex;
+                }
+
+                const remaining = text.substring(lastIndex);
+                if (remaining) {
+                  parts.push({ type: 'text', content: remaining });
+                }
+
+                // Si no hay bloques de código complejos
+                if (parts.length === 0) {
+                  parts.push({ type: 'text', content: text });
+                }
+
+                return parts.map((part, pIdx) => {
+                  if (part.type === 'code') {
+                    return (
+                      <pre key={pIdx} className="bg-dark-950 border border-dark-800 p-3 rounded-lg my-2 font-mono text-[11px] overflow-x-auto text-emerald-400 max-w-full">
+                        <code>{part.content}</code>
+                      </pre>
+                    );
+                  }
+
+                  // Parsear negritas (**) y código en línea (`) para los fragmentos de texto
+                  const subParts = part.content.split(/(\*\*.*?\*\*|`.*?`)/g);
+                  return (
+                    <span key={pIdx}>
+                      {subParts.map((sub, sIdx) => {
+                        if (sub.startsWith('**') && sub.endsWith('**')) {
+                          return <strong key={sIdx} className="font-extrabold text-white">{sub.slice(2, -2)}</strong>;
+                        }
+                        if (sub.startsWith('`') && sub.endsWith('`')) {
+                          return <code key={sIdx} className="bg-dark-950 px-1.5 py-0.5 rounded text-[11px] font-mono text-accent-400 border border-dark-850">{sub.slice(1, -1)}</code>;
+                        }
+                        return sub;
+                      })}
+                    </span>
+                  );
+                });
+              };
+
+              return (
+                <div 
+                  key={idx} 
+                  className={`flex flex-col gap-1 max-w-[85%] ${msg.sender === 'user' ? 'self-end items-end' : 'self-start items-start'}`}
+                >
+                  <div className={`p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${msg.sender === 'user' ? 'bg-primary-600 text-white rounded-tr-none shadow-glow' : 'bg-dark-900 border border-dark-850 text-dark-200 rounded-tl-none'}`}>
+                    {renderMessageText(msg.text)}
+                  </div>
+                  <span className="text-[9px] text-dark-500 px-1">{msg.time}</span>
                 </div>
-                <span className="text-[9px] text-dark-500 px-1">{msg.time}</span>
-              </div>
-            ))}
+              );
+            })}
             {typing && (
               <div className="self-start bg-dark-900 border border-dark-850 p-3 rounded-2xl rounded-tl-none text-xs text-dark-400 animate-pulse flex items-center gap-1.5">
                 <Bot className="w-4 h-4 text-primary-400 animate-bounce" /> Escribiendo respuesta...
