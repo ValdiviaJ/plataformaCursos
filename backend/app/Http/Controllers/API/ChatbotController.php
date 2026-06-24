@@ -40,7 +40,26 @@ class ChatbotController extends BaseController
 
             if ($response->successful()) {
                 Log::info('n8n Response Raw: ' . $response->body());
-                $reply = $response->json('output') ?? $response->json('response') ?? $response->json('text') ?? $response->body() ?? 'No pude generar una respuesta en este momento.';
+                
+                $rawBody = $response->body();
+                $reply = '';
+
+                // Si la respuesta contiene múltiples líneas JSON (formato stream/chunks de n8n)
+                if (str_contains($rawBody, '{"type":')) {
+                    $lines = explode("\n", trim($rawBody));
+                    foreach ($lines as $line) {
+                        $decoded = json_decode(trim($line), true);
+                        if ($decoded && isset($decoded['type']) && $decoded['type'] === 'item' && isset($decoded['content'])) {
+                            $reply .= $decoded['content'];
+                        }
+                    }
+                }
+
+                // Fallback por si no se detectó formato stream o quedó vacío
+                if (empty($reply)) {
+                    $reply = $response->json('output') ?? $response->json('response') ?? $response->json('text') ?? $rawBody ?? 'No pude generar una respuesta en este momento.';
+                }
+
                 return $this->sendResponse(['reply' => $reply], 'Respuesta generada correctamente por n8n');
             }
 
